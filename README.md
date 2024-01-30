@@ -17,16 +17,24 @@ provenance. PROV-DM is organized in six components, respectively dealing with: (
    support provenance of provenance; (5) properties to link entities that refer to the same thing; and, (6) collections
     forming a logical structure for its members._
 
-To use this library, add either of these to a requirements.txt and install, or install directly with pip install:  
+To use this library, poetry is recommended, see [poetry](https://python-poetry.org/). With Poetry installed, run `poetry add provworkflow` to add this library to your project.  
+Alternatively, create a requirements.txt file with the items in the `pyproject.toml` file under `[tool.poetry.dependencies]`, and run `pip install -r requirements.txt`.
 
-* `git+ssh://git@github.com/surroundaustralia/provwf.git`  
-* `git+https://{USERNAME}@bgithub.com/surroundaustralia/provwf.git`
+The source code is available at: https://github.com/Kurrawong/provworkflow
 
 ## Use & License
 This software is made available for use under the [Creative Common Attribution 4.0 International (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/). See the [LICENSE](LICENSE) file for the deed.
 
-## Contact
+## Maintainers
+
+**Kurrawong AI**  
+<https://kurrawong.ai/>  
+<info@kurrawong.ai>
+
+## Original Authors
 
 **SURROUND Australia Pty Ltd**  
 <https://surroundaustralia.com>  
 <info@surroundaustralia.com>  
+
+

@@ -40,12 +40,12 @@ def test_prov_to_graph():
 
 def test_persist_to_string():
     pr = ProvReporter()
-    p = pr.persist("string")
+    p = pr.prov_to_graph().serialize()
     assert p.startswith("@prefix")
 
     # trig test
     pr2 = ProvReporter(named_graph_uri=URIRef("http://example.com/provreporter/x"))
-    p = pr2.persist("string")
+    p = pr2.prov_to_graph().serialize(format="trig")
     assert "{" in p
 
 
@@ -54,7 +54,8 @@ def test_persist_to_file():
     tmp.close()
 
     pr = ProvReporter()
-    pr.persist(methods="file", rdf_file_path=tmp.name)
+    g = pr.prov_to_graph()
+    g.serialize(tmp.name + ".ttl", format="turtle")
     with open(tmp.name + ".ttl") as f:
         assert str(f.read()).startswith("@prefix")
     os.unlink(tmp.name + ".ttl")
@@ -99,30 +100,3 @@ def test_persist_to_graphdb():
     )
     gdb_pr_uri = r.json()["results"]["bindings"][0]["pr_uri"]["value"]
     assert gdb_pr_uri == pr_uri
-
-
-# TODO: David to test
-# def test_persist_to_sop():
-#     pr = ProvReporter()
-#     pr.persist("sop")
-
-
-# TODO: implement as needed
-# def test_persist_to_allegro():
-#     pr = ProvReporter()
-
-
-def test_persist_unknown():
-    pr = ProvReporter()
-    with pytest.raises(ProvWorkflowException):
-        pr.persist(methods="unknown")
-
-
-if __name__ == "__main__":
-    test_prov_to_graph()
-    # test_persist_to_string()
-    # test_persist_to_file()
-    # test_persist_to_graphdb()
-    # # test_persist_to_sop()
-    # # test_persist_to_allegro()
-    # test_persist_unknown()

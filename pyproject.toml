@@ -1,20 +1,20 @@
 [tool.poetry]
-name = "provwf"
-version = "0.1.0"
-description = ""
-authors = ["nicholascar <nicholas.car@surroundaustralia.com>"]
+name = "provworkflow"
+version = "0.2.0"
+description = "Records the provenance of Python workflows in RDF according to the Prov Workflow Ontology and the Prov Data Model"
+authors = ["Nick Car <nick@kurrawong.ai>", "David Habgood <david@kurrawong.ai>"]
 
 [tool.poetry.dependencies]
 python = "^3.9"
-rdflib = "^6.1.1"
-requests = "^2.27.1"
-GitPython = "^3.1.27"
+rdflib = "^7.0.0"
+requests = "^2.31.0"
+GitPython = "^3.1.41"
 
 [tool.poetry.dev-dependencies]
 codespell = "^2.1.0"
-black = "^22.3.0"
-pytest = "^7.1.1"
+black = "^24.1.1"
+pytest = "^8.0.0"
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
+requires = ["poetry-core>=1.8.1"]
 build-backend = "poetry.core.masonry.api"
