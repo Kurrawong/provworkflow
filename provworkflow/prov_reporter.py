@@ -1,3 +1,4 @@
+import os
 import uuid
 from _datetime import datetime
 from typing import Union
@@ -76,16 +77,18 @@ class ProvReporter:
                     "If supplied, a class_uri must start with http"
                 )
 
+        git_info = os.getenv("INCLUDE_GIT_INFO")
+        if git_info == "true":
         # from Git info
-        try:
-            from .git_utils import get_version_uri
+            try:
+                from .git_utils import get_version_uri
 
-            uri_str = get_version_uri()
-            if uri_str is not None:
-                self.version_uri = URIRef(uri_str)
+                uri_str = get_version_uri()
+                if uri_str is not None:
+                    self.version_uri = URIRef(uri_str)
 
-        except ImportError:
-            print("Git executable not found on system - git related functionality not available")
+            except ImportError:
+                print("Git executable not found on system - git related functionality not available")
 
         # fallback version
         if not hasattr(self, "version_uri"):
