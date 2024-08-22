@@ -26,4 +26,4 @@ b.generated.append(Entity(was_attributed_to=nick, uri="http://somewhere-on-s3/a/
 w.blocks.append(b)
 
 # print out
-print(w.persist("string"))
+print(w.prov_to_graph().serialize(format="turtle"))
