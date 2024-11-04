@@ -1,50 +1,53 @@
-from provworkflow.prov_reporter import ProvReporter
-from provworkflow import ProvWorkflowException
-from provworkflow.namespace import PROVWF
-from rdflib import URIRef, Graph, Literal
-from rdflib.namespace import DCTERMS, RDF, RDFS, XSD
 import os
-import requests
-import pytest
-from tests._graphdb_utils import setup_graphdb
 import tempfile
+
+import pytest
+import requests
+from rdflib import URIRef, Graph, Literal
+from rdflib.namespace import DCTERMS, RDF, RDFS
+
+from provworkflow.namespace import PROVWF
+from provworkflow.prov_reporter import ProvReporter
+from tests._graphdb_utils import setup_graphdb
+
 
 
 def test_prov_to_graph():
-    pr = ProvReporter()
+    pr = ProvReporter(class_uri=URIRef("https://example.com/provreporter/x"))
     g = pr.prov_to_graph()
 
     assert (
-        pr.uri,
-        RDF.type,
-        PROVWF.ProvReporter,
-    ) in g, "g must contain a provwf:ProvReporter"
+               pr.uri,
+               RDF.type,
+               PROVWF.ProvReporter,
+           ) in g, "g must contain a provwf:ProvReporter"
 
     assert (
-        pr.uri,
-        DCTERMS.created,
-        None,
-    ) in g, (
+               pr.uri,
+               DCTERMS.created,
+               None,
+           ) in g, (
         "g must contain a dcterms:created property for the provwf:ProvReporter instance"
     )
 
-    pr2 = ProvReporter(label="Test PR")
+    pr2 = ProvReporter(label="Test PR", class_uri=URIRef("https://example.com/provreporter/x"))
     g2 = pr2.prov_to_graph()
 
     assert (
-        pr2.uri,
-        RDFS.label,
-        Literal("Test PR", datatype=XSD.string),
-    ) in g2, "g must contain the label 'Test PR'"
+               pr2.uri,
+               RDFS.label,
+               Literal("Test PR"),
+           ) in g2, "g must contain the label 'Test PR'"
 
 
 def test_persist_to_string():
-    pr = ProvReporter()
+    pr = ProvReporter(class_uri=URIRef("https://example.com/provreporter/x"))
     p = pr.prov_to_graph().serialize()
     assert p.startswith("@prefix")
 
     # trig test
-    pr2 = ProvReporter(named_graph_uri=URIRef("http://example.com/provreporter/x"))
+    pr2 = ProvReporter(named_graph_uri=URIRef("http://example.com/provreporter/x"),
+                  class_uri=URIRef("https://example.com/provreporter/x"))
     p = pr2.prov_to_graph().serialize(format="trig")
     assert "{" in p
 
@@ -53,7 +56,7 @@ def test_persist_to_file():
     tmp = tempfile.NamedTemporaryFile()
     tmp.close()
 
-    pr = ProvReporter()
+    pr = ProvReporter(class_uri=URIRef("https://example.com/provreporter/x"))
     g = pr.prov_to_graph()
     g.serialize(tmp.name + ".ttl", format="turtle")
     with open(tmp.name + ".ttl") as f:
@@ -71,13 +74,13 @@ def test_persist_to_graphdb():
     GRAPHDB_PWD = os.environ.get("GRAPHDB_PWD", "")
     os.environ["GRAPH_DB_REPO_ID"] = "provwftesting"
 
-    pr = ProvReporter()
+    pr = ProvReporter(class_uri=URIRef("https://example.com/provreporter/x"))
     ttl = pr.persist(methods=["graphdb", "string"])
     pr_uri = None
     for s in (
-        Graph()
-        .parse(data=ttl, format="turtle")
-        .subjects(predicate=RDF.type, object=PROVWF.ProvReporter)
+            Graph()
+                    .parse(data=ttl, format="turtle")
+                    .subjects(predicate=RDF.type, object=PROVWF.ProvReporter)
     ):
         pr_uri = str(s)
 
@@ -100,3 +103,32 @@ def test_persist_to_graphdb():
     )
     gdb_pr_uri = r.json()["results"]["bindings"][0]["pr_uri"]["value"]
     assert gdb_pr_uri == pr_uri
+
+
+def test_prov_reporter_with_string_inputs():
+    # Test data
+    test_uri = "http://example.com/test"
+    test_label = "Test Label"
+    test_named_graph_uri = "http://example.com/named_graph"
+    test_class_uri = "http://example.com/class"
+
+    # Create ProvReporter instance with string inputs
+    reporter = ProvReporter(
+        uri=test_uri,
+        label=test_label,
+        named_graph_uri=test_named_graph_uri,
+        class_uri=test_class_uri
+    )
+
+    # Assert that string inputs are converted to appropriate types
+    assert isinstance(reporter.uri, URIRef)
+    assert str(reporter.uri) == test_uri
+
+    assert isinstance(reporter.label, Literal)
+    assert str(reporter.label) == test_label
+
+    assert isinstance(reporter.named_graph_uri, URIRef)
+    assert str(reporter.named_graph_uri) == test_named_graph_uri
+
+    assert isinstance(reporter.class_uri, URIRef)
+    assert str(reporter.class_uri) == test_class_uri

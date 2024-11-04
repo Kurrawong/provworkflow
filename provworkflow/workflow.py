@@ -1,19 +1,25 @@
-from typing import List, Union
+from __future__ import annotations
 
+from typing import List, Optional
+
+from pydantic import Field, model_validator
 from rdflib import URIRef, Graph, Literal
 from rdflib.namespace import OWL, PROV, RDF, RDFS, XSD
 
-from .namespace import PROVWF
-from .activity import Activity
-from .agent import Agent
-from .block import Block
 from . import ProvWorkflowException
+from .activity import Activity
+from .block import Block
+from .namespace import PROVWF
+
+
+class WorkflowException(Exception):
+    pass
 
 
 class Workflow(Activity):
     """A Workflow is a specialised prov:Activity that contains 1+ Blocks (also specialised Activity instances).
 
-    For its Semantic Web definition, see https://data.surroundaustralia.com/def/provworkflow/Workflow (not available
+    For its Semantic Web definition, see https://data.kurrawong.ai/def/provworkflow/Workflow (not available
     yet).
 
     You cannot set the _used_ or _generated_ properties of a Workflow as you can for other Activities as these are
@@ -39,29 +45,21 @@ class Workflow(Activity):
     :type blocks: List[Block], optional
     """
 
-    def __init__(
-        self,
-        uri: URIRef = None,
-        label: str = None,
-        named_graph_uri: URIRef = None,
-        was_associated_with: Agent = None,
-        blocks: List[Block] = None,
-        class_uri: Union[URIRef, str] = None,
-    ):
-        super().__init__(
-            uri=uri,
-            label=label,
-            named_graph_uri=named_graph_uri,
-            was_associated_with=was_associated_with,
-            class_uri=class_uri,
-        )
+    blocks: List[Block] = Field(
+        default_factory=list, description="Blocks that were run by this workflow"
+    )
 
-        self.blocks = blocks
-        if self.blocks is None:
-            self.blocks = []
+    class Config:
+        arbitrary_types_allowed = True
 
-    def prov_to_graph(self, g=None):
-        if self.blocks is None or len(self.blocks) < 1:
+    @model_validator(mode="after")
+    def validate_blocks(self) -> Workflow:
+        """Ensure workflow has at least one block when converting to graph."""
+        # We don't validate here because blocks might be added after creation
+        return self
+
+    def prov_to_graph(self, g: Optional[Graph] = None) -> Graph:
+        if not self.blocks:
             raise ProvWorkflowException(
                 "A Workflow must have at least one Block within it"
             )
@@ -72,17 +70,17 @@ class Workflow(Activity):
             else:
                 g = Graph()
 
-        # add in type
+        # Add in type
         g.add((self.uri, RDF.type, PROVWF.Workflow))
         g.remove((self.uri, RDF.type, PROV.Activity))
 
-        # add in type
+        # Add in type for specialized workflows
         if self.__class__.__name__ != "Workflow":
             g.add((self.uri, RDFS.subClassOf, PROVWF.Block))
             g.add((self.uri, RDF.type, self.class_uri))
             g.remove((self.uri, RDF.type, PROV.Activity))
 
-        # soft typing using the version_uri
+        # Soft typing using the version_uri
         if self.version_uri is not None:
             g.add(
                 (
@@ -92,31 +90,28 @@ class Workflow(Activity):
                 )
             )
 
-        # add the prov graph of each block to this Workflow's prov graph
+        # Add the prov graph of each block to this Workflow's prov graph
         for block in self.blocks:
             block.prov_to_graph(g)
-            # associate this Block with this Workflow
+            # Associate this Block with this Workflow
             g.add((self.uri, PROVWF.hadBlock, block.uri))
 
-        # build all the details for the Workflow itself
+        # Build all the details for the Workflow itself
         g = super().prov_to_graph(g)
 
-        # attach external Block inputs and outputs to the Workflow
+        # Attach external Block inputs and outputs to the Workflow
         all_inputs = [o for o in g.objects(subject=None, predicate=PROV.used)]
         all_outputs = [o for o in g.objects(subject=None, predicate=PROV.generated)]
+
         for i in [x for x in all_inputs if x not in all_outputs]:
             g.add((self.uri, PROV.used, i))
 
         for o in [x for x in all_outputs if x not in all_inputs]:
             g.add((self.uri, PROV.generated, o))
 
-        # add back in any externals
+        # Add back in any externals
         for s in g.subjects(predicate=PROV.wasAttributedTo, object=Literal("Workflow")):
             g.add((self.uri, PROV.generated, s))
             g.remove((s, PROV.generated, Literal("")))
 
         return g
-
-
-class WorkflowException(Exception):
-    pass

@@ -1,7 +1,25 @@
-from .entity import Entity
+from __future__ import annotations
+
+from typing import Optional
+
+from pydantic import Field, BeforeValidator
 from rdflib import Graph, URIRef, Literal
 from rdflib.namespace import PROV, RDF
+from typing_extensions import Annotated
+
+from .entity import Entity
 from .prov_reporter import PROVWF
+
+
+def convert_to_error_literal(v):
+    """Convert input to Literal with ERROR default."""
+    if isinstance(v, str):
+        return Literal(v)
+    elif isinstance(v, Literal):
+        return v
+    elif v is None:
+        return Literal("ERROR")
+    return v
 
 
 class ErrorEntity(Entity):
@@ -22,21 +40,21 @@ class ErrorEntity(Entity):
     :type value: Literal, optional
     """
 
-    def __init__(
-        self,
-        label: str = None,
-        named_graph_uri: URIRef = None,
-        value: str = None,
-    ):
-        super().__init__(label=label, named_graph_uri=named_graph_uri)
+    label: Annotated[Literal, BeforeValidator(convert_to_error_literal)] = Field(
+        default="ERROR", description="Text label for the error entity"
+    )
+    value: Annotated[Literal, BeforeValidator(convert_to_error_literal)] = Field(
+        default="ERROR", description="Value describing the error"
+    )
+    class_uri: URIRef = Field(default=PROVWF.ErrorEntity, frozen=True)
 
-        self.label = Literal(label) if label is not None else "ERROR"
-        self.value = Literal(value) if value is not None else "ERROR"
+    class Config:
+        arbitrary_types_allowed = True
 
-    def prov_to_graph(self, g: Graph = None) -> Graph:
+    def prov_to_graph(self, g: Optional[Graph] = None) -> Graph:
         g = super().prov_to_graph(g)
 
-        # add in type
+        # Add in type
         g.add((self.uri, RDF.type, PROVWF.ErrorEntity))
         g.remove((self.uri, RDF.type, PROV.Entity))
 

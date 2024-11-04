@@ -1,8 +1,14 @@
-from typing import Union
+from __future__ import annotations
+
+from typing import Union, Optional
+
+from pydantic import Field, BeforeValidator, model_validator
 from rdflib import Graph, URIRef
 from rdflib.namespace import PROV, RDF
+from typing_extensions import Annotated
 
 from .prov_reporter import ProvReporter, PROVWF
+from .utils import convert_to_uriref
 
 
 class Agent(ProvReporter):
@@ -19,30 +25,26 @@ class Agent(ProvReporter):
     :type named_graph_uri: Union[URIRef, str], optional
     """
 
-    def __init__(
-        self,
-        uri: URIRef = None,
-        label: str = None,
-        named_graph_uri: URIRef = None,
-        acted_on_behalf_of: Union["Agent", URIRef] = None,
-    ):
-        # handle URIRef or Agent acted_on_behalf_of
-        if acted_on_behalf_of is not None:
-            if type(acted_on_behalf_of) == URIRef:
-                self.acted_on_behalf_of = Agent(uri=self.acted_on_behalf_of)
-            else:
-                self.acted_on_behalf_of = acted_on_behalf_of
-        super().__init__(uri=uri, label=label, named_graph_uri=named_graph_uri)
+    acted_on_behalf_of: Optional[
+        Union[Agent, Annotated[URIRef, BeforeValidator(convert_to_uriref)]]
+    ] = Field(default=None, description="The agent this agent acted on behalf of")
 
-    def prov_to_graph(self, g: Graph = None) -> Graph:
+    @model_validator(mode="after")
+    def validate_acted_on_behalf_of(self) -> Agent:
+        """Convert URIRef to Agent if needed."""
+        if isinstance(self.acted_on_behalf_of, URIRef):
+            self.acted_on_behalf_of = Agent(uri=self.acted_on_behalf_of)
+        return self
+
+    def prov_to_graph(self, g: Optional[Graph] = None) -> Graph:
         g = super().prov_to_graph(g)
 
-        # add in type
+        # Add in type
         g.add((self.uri, RDF.type, PROV.Agent))
         g.remove((self.uri, RDF.type, PROVWF.ProvReporter))
 
-        # special Agent properties
-        if hasattr(self, "acted_on_behalf_of"):
+        # Special Agent properties
+        if self.acted_on_behalf_of is not None:
             self.acted_on_behalf_of.prov_to_graph(g)
             g.add((self.uri, PROV.actedOnBehalfOf, self.acted_on_behalf_of.uri))
 

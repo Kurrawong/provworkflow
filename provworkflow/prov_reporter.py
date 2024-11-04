@@ -1,123 +1,136 @@
+from __future__ import annotations
+
 import os
 import uuid
-from _datetime import datetime
-from typing import Union
+from datetime import datetime
+from typing import Optional
 
+from pydantic import BaseModel, Field, model_validator, ConfigDict, BeforeValidator
 from rdflib import Graph, URIRef, Literal
 from rdflib.namespace import DCTERMS, PROV, OWL, RDF, RDFS, XSD
+from typing_extensions import Annotated
 
 from .exceptions import ProvWorkflowException
 from .namespace import PROVWF, PWFS
+from .utils import convert_to_uriref, convert_to_literal
 
 
-class class_or_instance_method(classmethod):
-    def __get__(self, instance, type_):
-        descr_get = super().__get__ if instance is None else self.__func__.__get__
-        return descr_get(instance, type_)
+class ProvReporter(BaseModel):
+    """A base class for PROV reporting in semantic web applications.
 
+    This class serves as a superclass for all PROV classes (Entity, Activity, Agent) and facilitates
+    provenance logging. It should not be instantiated directly - use instead Entity, Activity,
+    or their subclasses like Block & Workflow.
 
-class ProvReporter:
-    """Created provwf:ProvReporter instances.
+    Attributes:
+        uri: A unique identifier for this instance. If not provided, a UUID-based URI will be generated.
+        label: A human-readable label for this instance.
+        named_graph_uri: The URI of the named graph this instance belongs to.
+        class_uri: The URI of the specialized class this instance represents.
+        version_uri: The version URI, derived from Git info if available.
+        created: Timestamp of instance creation.
 
-    For its Semantic Web definition, see https://data.surroundaustralia.com/def/provworkflow/ProvReporter
-     (not available yet)
+    Example:
+        ```python
+        # This class should not be used directly, but its subclasses work like this:
+        class MySpecializedBlock(ProvReporter):
+            class_uri = URIRef("http://example.org/MyBlock")
 
-    ProvReporter is a superclass of all PROV classes (Entity, Activity, Agent) and is created here just to facilitate
-    logging. You should NOT directly instantiate this class - it is essentially abstract. Use instead, Entity, Activity
-    etc., including grandchildren such as Block & Workflow.
-
-    ProvReporters automatically record created times (dcterms:created) and an instance version IRI which is collected
-    from the instance's Git version (URI of the Git origin repo, not local).
-
-    :param uri: A URI you assign to the ProvReporter instance. If None, a UUID-based URI will be created,
-    defaults to None
-    :type uri: Union[URIRef, str], optional
-
-    :param label: A text label you assign, defaults to None
-    :type label: str, optional
-
-    :param named_graph_uri: A Named Graph URI you assign, defaults to None
-    :type named_graph_uri: Union[URIRef, str], optional
+        block = MySpecializedBlock(label="My Block")
+        ```
     """
 
-    def __init__(
-        self,
-        uri: Union[URIRef, str] = None,
-        label: Union[Literal, str] = None,
-        named_graph_uri: Union[URIRef, str] = None,
-        class_uri: Union[URIRef, str] = None,
-    ):
-        # give it an opaque UUID-based URI if one not given
-        if uri is not None:
-            self.uri = URIRef(uri) if type(uri) == str else uri
-        else:
-            self.uri = URIRef(PWFS + str(uuid.uuid1()))
-        self.label = Literal(label) if type(label) == str else label
-        self.named_graph_uri = (
-            URIRef(named_graph_uri) if type(named_graph_uri) == str else named_graph_uri
-        )
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
-        # class specialisations
-        if class_uri is not None:
-            self.class_uri = URIRef(class_uri) if type(class_uri) == str else class_uri
+    uri: Annotated[URIRef, BeforeValidator(convert_to_uriref)] = Field(
+        default_factory=lambda: URIRef(PWFS + str(uuid.uuid1())),
+        description="Unique identifier for this instance",
+    )
+    label: Optional[Annotated[Literal, BeforeValidator(convert_to_literal)]] = Field(
+        default=None, description="Human-readable label"
+    )
+    named_graph_uri: Optional[Annotated[URIRef, BeforeValidator(convert_to_uriref)]] = (
+        Field(default=None, description="URI of the named graph")
+    )
+    class_uri: Optional[Annotated[URIRef, BeforeValidator(convert_to_uriref)]] = Field(
+        default=None, description="URI of the specialized class"
+    )
+    version_uri: Optional[URIRef] = Field(
+        default=None, description="Version URI from Git or fallback"
+    )
+    created: Literal = Field(
+        default_factory=lambda: Literal(
+            datetime.now().astimezone().strftime("%Y-%m-%dT%H:%M:%S%z"),
+            datatype=XSD.dateTimeStamp,
+        ),
+        description="Timestamp of instance creation",
+    )
 
-            known_classes = ["Entity", "Activity", "Agent", "Workflow", "Block"]
-            if self.__class__.__name__ in known_classes and self.class_uri is not None:
-                raise ProvWorkflowException(
-                    "If a ProvWorkflow-defined class is used without specialisation, class_uri must not be set"
-                )
-            elif (
-                self.__class__.__name__ not in known_classes and self.class_uri is None
-            ):
-                raise ProvWorkflowException(
-                    "A specialised Block must have a class_uri instance variable supplied"
-                )
-            elif self.class_uri is not None and not self.class_uri.startswith("http"):
-                raise ProvWorkflowException(
-                    "If supplied, a class_uri must start with http"
-                )
+    @model_validator(mode="after")
+    def validate_class_specialization(self) -> ProvReporter:
+        """Validate class specialization rules and setup version URI."""
+        # Validate class specialization
+        known_classes = ["Entity", "Activity", "Agent", "Workflow", "Block"]
+        class_name = self.__class__.__name__
 
+        if class_name in known_classes and self.class_uri is not None:
+            raise ProvWorkflowException(
+                "If a ProvWorkflow-defined class is used without specialisation, class_uri must not be set"
+            )
+        elif class_name not in known_classes and self.class_uri is None:
+            raise ProvWorkflowException(
+                "A specialised Block must have a class_uri instance variable supplied"
+            )
+        elif self.class_uri is not None and not str(self.class_uri).startswith("http"):
+            raise ProvWorkflowException("If supplied, a class_uri must start with http")
+
+        # Setup version URI
         git_info = os.getenv("INCLUDE_GIT_INFO")
         if git_info == "true":
-        # from Git info
             try:
                 from .git_utils import get_version_uri
 
                 uri_str = get_version_uri()
                 if uri_str is not None:
                     self.version_uri = URIRef(uri_str)
-
             except ImportError:
-                print("Git executable not found on system - git related functionality not available")
+                print(
+                    "Git executable not found on system - git related functionality not available"
+                )
 
-        # fallback version
-        if not hasattr(self, "version_uri"):
+        if self.version_uri is None:
             self.version_uri = self.uri
 
-        self.created = Literal(
-            datetime.now().astimezone().strftime("%Y-%m-%dT%H:%M:%S%z"),
-            datatype=XSD.dateTimeStamp,
-        )
+        return self
 
+    def prov_to_graph(self, g: Optional[Graph] = None) -> Graph:
+        """Convert the instance to RDF graph format.
 
-    def prov_to_graph(self, g: Graph = None) -> Graph:
+        Args:
+            g: An existing graph to add statements to. If None, creates a new graph.
+
+        Returns:
+            The RDF graph containing this instance's statements.
+        """
         if g is None:
             if self.named_graph_uri is not None:
-                g = Graph(identifier=URIRef(self.named_graph_uri))
+                g = Graph(identifier=self.named_graph_uri)
             else:
                 g = Graph()
+
+        # Bind namespaces
         g.bind("prov", PROV)
         g.bind("provwf", PROVWF)
         g.bind("pwfs", PWFS)
         g.bind("owl", OWL)
         g.bind("dcterms", DCTERMS)
 
-        # this instance's URI
+        # Add basic statements
         g.add((self.uri, RDF.type, PROVWF.ProvReporter))
         g.add((self.uri, DCTERMS.created, self.created))
 
-        # add a label if this Activity has one
+        # Add label if present
         if self.label is not None:
-            g.add((self.uri, RDFS.label, Literal(self.label, datatype=XSD.string)))
+            g.add((self.uri, RDFS.label, self.label))
 
         return g

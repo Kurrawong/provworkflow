@@ -16,7 +16,7 @@ def test_prov_to_graph():
     # check basic typing
     assert (e.uri, RDF.type, PROV.Entity) in g, "g must contain a prov:Entity"
 
-    e = Entity(was_used_by=Activity(uri=URIRef("https://something.com/x")))
+    e = Entity(was_used_by=[Activity(uri=URIRef("https://something.com/x"))])
     g = e.prov_to_graph()
 
     assert (

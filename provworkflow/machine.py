@@ -1,9 +1,14 @@
-from typing import Union
+from __future__ import annotations
+from typing import Optional
+from typing_extensions import Annotated
+
+from pydantic import Field
 from rdflib import Graph, URIRef
 from rdflib.namespace import PROV, RDF, SDO
 
 from .agent import Agent
 from .prov_reporter import PROVWF
+from .utils import convert_to_uriref
 
 
 class Machine(Agent):
@@ -20,24 +25,12 @@ class Machine(Agent):
     :type named_graph_uri: Union[URIRef, str], optional
     """
 
-    def __init__(
-        self,
-        uri: URIRef = None,
-        label: str = None,
-        named_graph_uri: URIRef = None,
-        acted_on_behalf_of: Union[Agent, URIRef] = None,
-    ):
-        super().__init__(
-            uri=uri,
-            label=label,
-            named_graph_uri=named_graph_uri,
-            acted_on_behalf_of=acted_on_behalf_of,
-        )
+    class_uri: URIRef = Field(default=PROVWF.Machine, frozen=True)
 
-    def prov_to_graph(self, g: Graph = None) -> Graph:
+    def prov_to_graph(self, g: Optional[Graph] = None) -> Graph:
         g = super().prov_to_graph(g)
 
-        # add in type
+        # Add in type
         g.add((self.uri, RDF.type, PROVWF.Machine))
         g.remove((self.uri, RDF.type, PROV.Agent))
 

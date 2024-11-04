@@ -22,7 +22,7 @@ def test_prov_to_graph():
         DCAT.DataService,
     ) in g, "g must contain a dcat:DataService"
 
-    ds = DataService(was_used_by=Activity(uri=URIRef("https://something.com/x")))
+    ds = DataService(was_used_by=[Activity(uri=URIRef("https://something.com/x"))])
     g = ds.prov_to_graph()
 
     assert (
@@ -41,7 +41,7 @@ def test_prov_to_graph():
         assert (
             o,
             RDFS.label,
-            Literal("Some Dataset", datatype=XSD.string),
+            Literal("Some Dataset"),
         ) in g, 'g must contain <{}> dcat:servesDataset/rdfs:label "{}"'.format(
             ds.uri, dataset_label
         )

@@ -1,6 +1,7 @@
 import git
 from pathlib import Path
 
+
 def is_git_repo(path):
     """Determine whether the path is a Git repo"""
     try:

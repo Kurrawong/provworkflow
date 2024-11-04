@@ -1,7 +1,7 @@
 # ProvWorkflow
 
 This is a Python library for creating workflows of "Blocks", components of "Workflows" that log their actions in RDF, 
-according to the [Prov Workflow (ProvWF)](https://data.surroundaustralia.com/def/provworkflow) profile of the 
+according to the [Prov Workflow (ProvWF)](https://data.kurrawong.ai/def/provworkflow) profile of the 
 [PROV-O standard](https://www.w3.org/TR/2013/REC-prov-o-20130430/).
 
 A brief description of what provenance is, and the components used, reproduced from 

@@ -1,13 +1,14 @@
-from typing import List
+from __future__ import annotations
+
+from typing import List, Optional
+
+from pydantic import Field, BeforeValidator
 from rdflib import Graph, URIRef, Literal
-from rdflib.namespace import DCAT, PROV, RDF, XSD
+from rdflib.namespace import DCAT, PROV, RDF
+from typing_extensions import Annotated
 
-from .namespace import PROVWF
-from .prov_reporter import ProvReporter
-from .agent import Agent
-from .entity import Entity
-
-# from .activity import Activity
+from .entity import Entity, convert_to_entity
+from .utils import convert_to_literal
 
 
 class DataService(Entity):
@@ -24,7 +25,7 @@ class DataService(Entity):
     :type named_graph_uri: Union[URIRef, str], optional
 
     :param access_uri: (dcat:accessURL) should be used to contain links used to access the content of the Entity, e.g. a
-        Google Cloud Services API call or an S2 Bucket link.
+        Google Cloud Services API call or an S3 Bucket link.
     :type access_uri: str, optional
 
     :param service_parameters: (provwf:serviceParameters) should be used to contain any parameters used for web
@@ -47,57 +48,39 @@ class DataService(Entity):
     This is a form of dcat:distribution
     :type serves_datasets: Entity, optional
 
-    :param external: Whether or not this Entity exists outside the workflow
+    :param external: Whether this Entity exists outside the workflow
     :type external: bool, optional
     """
 
-    def __init__(
-        self,
-        uri: URIRef = None,
-        label: str = None,
-        named_graph_uri: URIRef = None,
-        value: str = None,
-        access_uri: str = None,
-        service_parameters: str = None,
-        was_used_by=None,
-        was_generated_by=None,
-        was_attributed_to: Agent = None,
-        serves_datasets: List[Entity] = None,
-        external: bool = None,
-    ):
-        super().__init__(uri=uri, label=label, named_graph_uri=named_graph_uri)
+    value: Optional[Annotated[Literal, BeforeValidator(convert_to_literal)]] = Field(
+        default=None, description="Value as a Literal"
+    )
+    access_uri: Optional[Annotated[Literal, BeforeValidator(convert_to_literal)]] = (
+        Field(default=None, description="URI for accessing the service")
+    )
+    service_parameters: Optional[
+        Annotated[Literal, BeforeValidator(convert_to_literal)]
+    ] = Field(default=None, description="Parameters for the service")
+    serves_datasets: Annotated[List[Entity], BeforeValidator(convert_to_entity)] = (
+        Field(default_factory=list, description="Datasets served by this service")
+    )
+    class_uri: URIRef = Field(default=DCAT.DataService, frozen=True)
 
-        self.value = Literal(value) if value is not None else None
-        self.access_uri = (
-            Literal(access_uri, datatype=XSD.anyURI) if access_uri is not None else None
-        )
-        self.service_parameters = (
-            Literal(service_parameters) if service_parameters is not None else None
-        )
-        if type(was_used_by) != list:
-            self.was_used_by = [was_used_by]
-        else:
-            self.was_used_by = was_used_by
-        if type(was_generated_by) != list:
-            self.was_generated_by = [was_generated_by]
-        else:
-            self.was_used_by = was_used_by
-        self.was_attributed_to = was_attributed_to
-        self.serves_datasets = serves_datasets
-        self.external = external
+    class Config:
+        arbitrary_types_allowed = True
 
-    def prov_to_graph(self, g: Graph = None) -> Graph:
+    def prov_to_graph(self, g: Optional[Graph] = None) -> Graph:
         g = super().prov_to_graph(g)
 
         g.bind("dcat", DCAT)
 
-        # add in type
+        # Add in type
         g.add((self.uri, RDF.type, DCAT.DataService))
         g.remove((self.uri, RDF.type, PROV.Entity))
 
-        if self.serves_datasets is not None:
-            for d in self.serves_datasets:
-                d.prov_to_graph(g)
-                g.add((self.uri, DCAT.servesDataset, d.uri))
+        # Add served datasets
+        for dataset in self.serves_datasets:
+            dataset.prov_to_graph(g)
+            g.add((self.uri, DCAT.servesDataset, dataset.uri))
 
         return g
