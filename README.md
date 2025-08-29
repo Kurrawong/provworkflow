@@ -22,8 +22,11 @@ Alternatively, create a requirements.txt file with the items in the `pyproject.t
 
 The source code is available at: https://github.com/Kurrawong/provworkflow
 
-## Use & License
-This software is made available for use under the [Creative Common Attribution 4.0 International (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/). See the [LICENSE](LICENSE) file for the deed.
+## License
+
+This code is available for reuse according to the https://opensource.org/license/bsd-3-clause[BSD 3-Clause License].
+
+&copy; 2022-2025 KurrawongAI
 
 ## Maintainers
 
