@@ -95,7 +95,7 @@ class ProvReporter:
             self.version_uri = self.uri
 
         self.created = Literal(
-            datetime.now().astimezone().strftime("%Y-%m-%dT%H:%M:%S%z"),
+            datetime.now().astimezone().strftime("%Y-%m-%dT%H:%M:%S%:z"),
             datatype=XSD.dateTimeStamp,
         )
 

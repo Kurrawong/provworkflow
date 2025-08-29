@@ -57,7 +57,7 @@ class Activity(ProvReporter):
             uri=uri, label=label, named_graph_uri=named_graph_uri, class_uri=class_uri
         )
 
-        self.started_at_time = datetime.now().astimezone().strftime("%Y-%m-%dT%H:%M:%S%z")
+        self.started_at_time = datetime.now().astimezone().strftime("%Y-%m-%dT%H:%M:%S%:z")
         self.ended_at_time = None
 
         self.used = used if used is not None else []
@@ -107,7 +107,7 @@ class Activity(ProvReporter):
 
         # if we don't yet have an endedAtTime recorded, make it now
         if self.ended_at_time is None:
-            self.ended_at_time = datetime.now().astimezone().strftime("%Y-%m-%dT%H:%M:%S%z")
+            self.ended_at_time = datetime.now().astimezone().strftime("%Y-%m-%dT%H:%M:%S%:z")
 
         # all Activities have a endedAtTime
         g.add(
