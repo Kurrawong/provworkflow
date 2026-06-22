@@ -7,6 +7,11 @@ from rdflib import Graph, URIRef, BNode, Literal
 from rdflib.namespace import DCTERMS, PROV, RDF, XSD
 
 
+def now_as_xsd_datetime_stamp() -> str:
+    """Return a local timezone-aware timestamp for xsd:dateTimeStamp values."""
+    return datetime.now().astimezone().isoformat(timespec="seconds")
+
+
 def query_sop_sparql(named_graph_uri, query, update=False):
     """
     Perform read and write SPARQL queries against a Surround Ontology Platform (SOP) instance

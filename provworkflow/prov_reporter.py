@@ -1,6 +1,5 @@
 import os
 import uuid
-from _datetime import datetime
 from typing import Union
 
 from rdflib import Graph, URIRef, Literal
@@ -8,6 +7,7 @@ from rdflib.namespace import DCTERMS, PROV, OWL, RDF, RDFS, XSD
 
 from .exceptions import ProvWorkflowException
 from .namespace import PROVWF, PWFS
+from .utils import now_as_xsd_datetime_stamp
 
 
 class class_or_instance_method(classmethod):
@@ -95,7 +95,7 @@ class ProvReporter:
             self.version_uri = self.uri
 
         self.created = Literal(
-            datetime.now().astimezone().strftime("%Y-%m-%dT%H:%M:%S%:z"),
+            now_as_xsd_datetime_stamp(),
             datatype=XSD.dateTimeStamp,
         )
 
