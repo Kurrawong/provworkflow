@@ -1,5 +1,4 @@
 from __future__ import annotations
-from datetime import datetime
 from typing import List, Union
 
 from rdflib import Graph, URIRef, Literal
@@ -10,6 +9,7 @@ from rdflib.namespace import PROV, RDF, XSD
 from .prov_reporter import ProvReporter, PROVWF
 from .entity import Entity
 from .agent import Agent
+from .utils import now_as_xsd_datetime_stamp
 
 
 class Activity(ProvReporter):
@@ -57,7 +57,7 @@ class Activity(ProvReporter):
             uri=uri, label=label, named_graph_uri=named_graph_uri, class_uri=class_uri
         )
 
-        self.started_at_time = datetime.now().astimezone().strftime("%Y-%m-%dT%H:%M:%S%:z")
+        self.started_at_time = now_as_xsd_datetime_stamp()
         self.ended_at_time = None
 
         self.used = used if used is not None else []
@@ -107,7 +107,7 @@ class Activity(ProvReporter):
 
         # if we don't yet have an endedAtTime recorded, make it now
         if self.ended_at_time is None:
-            self.ended_at_time = datetime.now().astimezone().strftime("%Y-%m-%dT%H:%M:%S%:z")
+            self.ended_at_time = now_as_xsd_datetime_stamp()
 
         # all Activities have a endedAtTime
         g.add(
